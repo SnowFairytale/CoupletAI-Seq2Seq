@@ -1,4 +1,4 @@
-﻿# 自动对联生成：Seq2Seq（GRU + Attention）
+# 自动对联生成：Seq2Seq（GRU + Attention）
 
 机器学习概论课程项目。给定上联，模型自回归地逐字生成下联。
 
@@ -50,7 +50,7 @@ conda activate dip
 pip install -r requirements.txt
 ```
 
-原始数据沿用样例目录 `../CoupletAI/couplet`（70 余万条对联，上/下联以空格分隔的单字）。预处理：
+原始数据沿用样例目录 `../CoupletAI/couplet`（70 余万条对联，上/下联以空格分隔的单字）。如果单独克隆本仓库，需要先下载数据集（[couplet.tar.gz](https://github.com/wb14123/couplet-dataset/releases/download/1.0/couplet.tar.gz)）并放到 `../CoupletAI/couplet`，或通过 `--input` 指定路径。预处理：
 
 ```bash
 python preprocess.py --input ../CoupletAI/couplet --output data --val_size 20000
