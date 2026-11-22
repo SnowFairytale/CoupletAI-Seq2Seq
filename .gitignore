@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# pre-processed arrays (several hundred MB, reproducible with preprocess.py)
+data/
+
+# model checkpoints (reproducible by training)
+results/checkpoints/
+results_smoke/
+*.pt
+*.bin
+
+# console logs / tensorboard style outputs
+results/logs/*.log
+runs/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
