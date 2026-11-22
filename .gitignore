@@ -22,3 +22,6 @@ runs/
 Thumbs.db
 .idea/
 .vscode/
+
+# submission archive (contains the 58 MB checkpoint)
+*.zip

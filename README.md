@@ -108,6 +108,26 @@ python predict.py --checkpoint results/checkpoints/gru_attn_best.pt --demo --bea
 
 一个重要的分析是“参考不唯一”：同一上联的两个不同人工下联之间，BLEU-4 平均只有 **0.092**（中位数 0.020），ROUGE-L 为 0.195。因此本任务中 BLEU-4 的绝对值低，很大程度上是单参考指标造成的；本模型的 0.0326 已高于人类参考对的中位数，ROUGE-L / 字级准确率达到人类参考对的约 74%–75%。详细的损失曲线、注意力消融、生成样例与错误分析见 [report.md](report.md)，图片在 `results/figures/`。
 
-## 7. 说明
+## 7. 模型参数提交
+
+最优模型参数整理在 `submission/`：
+
+- `gru_attn_seq2seq_best.pt`：标准 FP32 权重（58.42 MB）；
+- `gru_attn_seq2seq_best_fp16.pt`：FP16 压缩版权重（29.22 MB，适合 50 MB 限制的提交系统）；
+- `best_params.md` / `model_config.json`：模型结构、训练超参数、数据划分、测试指标与 SHA256；
+- `vocab.json`：推理用字符词表；
+- `inspect_checkpoint.py`：仅依赖 PyTorch 的权重检查脚本；
+- `test_metrics_*.json`、`model_architecture.png`、`loss_curves.png`。
+
+因体积原因，`.pt` 权重和提交压缩包未提交到 Git；本地提交包为
+`CoupletAI_Seq2Seq_model_params.zip`（54.52 MB）和
+`CoupletAI_Seq2Seq_model_params_fp16.zip`（27.29 MB）。
+
+```bash
+python predict.py --checkpoint submission/gru_attn_seq2seq_best.pt \
+    --data submission --text "一曲笙歌春似海" --beam_size 5 --fixed_len
+```
+
+## 8. 说明
 
 样例代码与数据来自 [wb14123/CoupletAI](https://github.com/wb14123/CoupletAI)，仅用于课程实验对照。
