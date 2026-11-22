@@ -192,8 +192,15 @@ class Seq2Seq(nn.Module):
     # ------------------------------------------------------------------ #
     @torch.no_grad()
     def generate_greedy(self, src: torch.Tensor, src_lens: torch.Tensor,
-                        max_len: Optional[int] = None) -> torch.Tensor:
-        """Batched greedy decoding.  Returns (B, steps) ids including EOS."""
+                        max_len: Optional[int] = None,
+                        mask_eos_until: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """Batched greedy decoding.  Returns (B, steps) ids including EOS.
+
+        ``mask_eos_until`` is an optional per-sample tensor: EOS is forbidden
+        while the current step is smaller than that value.  Passing
+        ``mask_eos_until=src_lens`` therefore uses the equal-length prior of
+        couplets and forces at least ``src_len`` characters.
+        """
         enc_out, enc_proj, hidden, mask = self.encode(src, src_lens)
         batch_size = src.size(0)
         if max_len is None:
@@ -204,9 +211,12 @@ class Seq2Seq(nn.Module):
         outputs: List[torch.Tensor] = []
         eos = torch.full_like(input_tok, self.eos_id)
 
-        for _ in range(max_len):
+        for step in range(max_len):
             logits, hidden, _ = self.decoder.step(
                 input_tok, hidden, enc_out, enc_proj, mask)
+            if mask_eos_until is not None:
+                forbid = step < mask_eos_until
+                logits[:, self.eos_id] = logits[:, self.eos_id].masked_fill(forbid, -1e4)
             predicted = logits.argmax(dim=-1)
             predicted = torch.where(finished, eos, predicted)
             outputs.append(predicted)
@@ -222,7 +232,8 @@ class Seq2Seq(nn.Module):
     @torch.no_grad()
     def generate_beam(self, src: torch.Tensor, src_len: int,
                       max_len: Optional[int] = None, beam_size: int = 5,
-                      length_penalty: float = 0.6) -> List[int]:
+                      length_penalty: float = 0.6,
+                      min_len: int = 0) -> List[int]:
         """Beam search for a single upper couplet.  Returns token ids (no EOS)."""
         device = src.device
         if max_len is None:
@@ -241,9 +252,11 @@ class Seq2Seq(nn.Module):
         sequences: List[List[int]] = [[] for _ in range(beam_size)]
         finished = torch.zeros(beam_size, dtype=torch.bool, device=device)
 
-        for _ in range(max_len):
+        for step in range(max_len):
             logits, hidden, _ = self.decoder.step(
                 input_tok, hidden, enc_out, enc_proj, mask)
+            if step < min_len:
+                logits[:, self.eos_id] = -1e4
             log_probs = F.log_softmax(logits.float(), dim=-1)
             if bool(finished.any()):
                 log_probs[finished] = -1e9

@@ -36,6 +36,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--data", default="data", type=str)
     parser.add_argument("--split", default="test", choices=["val", "test"])
     parser.add_argument("--beam_size", default=1, type=int)
+    parser.add_argument("--fixed_len", action="store_true",
+                        help="force the generated lower couplet to have the same length as the upper one")
     parser.add_argument("--max_samples", default=None, type=int)
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--output", default="results", type=str)
@@ -109,7 +111,8 @@ def main() -> None:
         src, src_lens, tgt, _ = (t.to(device, non_blocking=True) for t in batch)
         _, pred_texts = decode_batch(model, tokenizer, src, src_lens,
                                      model_name=model_name,
-                                     beam_size=args.beam_size)
+                                     beam_size=args.beam_size,
+                                     fixed_len=args.fixed_len)
         for i, pred_text in enumerate(pred_texts):
             length = int(src_lens[i])
             upper = tokenizer.decode(src[i, :length].tolist())
@@ -137,6 +140,8 @@ def main() -> None:
         "model": model_name,
         "best_epoch": checkpoint.get("epoch"),
         "beam_size": args.beam_size,
+        "fixed_len": args.fixed_len,
+        "decode_mode": "fixed-length" if args.fixed_len else "free EOS",
         "teacher_forced_loss": loss,
         "teacher_forced_ppl": ppl,
         "num_samples": len(dataset),

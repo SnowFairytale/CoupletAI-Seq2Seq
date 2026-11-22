@@ -68,6 +68,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--min_lr", default=1e-5, type=float)
     parser.add_argument("--max_train", default=None, type=int,
                         help="optionally train on a random subset (debug/ablation)")
+    parser.add_argument("--init_checkpoint", default=None, type=str,
+                        help="initialise model weights from a checkpoint (for continued training)")
     parser.add_argument("--limit_batches", default=None, type=int,
                         help="stop each epoch after N batches (smoke test)")
     parser.add_argument("--log_every", default=50, type=int)
@@ -217,6 +219,11 @@ def main() -> None:
                             dropout=args.dropout)
     model = build_model(args.model, tokenizer.vocab_size, pad_id=pad_id,
                         bos_id=bos_id, eos_id=eos_id, **model_kwargs).to(device)
+    if args.init_checkpoint:
+        init = torch.load(args.init_checkpoint, map_location="cpu", weights_only=False)
+        model.load_state_dict(init["model_state"])
+        print(f"initialised weights from {args.init_checkpoint} "
+              f"(epoch {init.get('epoch')}, val_loss={init.get('val_loss'):.4f})")
     n_params = count_parameters(model)
     print(f"model={args.model}, trainable parameters={n_params:,}")
 

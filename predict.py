@@ -1,4 +1,4 @@
-"""Interactive / command-line inference for a trained couplet model.
+﻿"""Interactive / command-line inference for a trained couplet model.
 
 Examples::
 
@@ -40,6 +40,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--data", default="data", type=str)
     parser.add_argument("--text", nargs="*", default=None, type=str)
     parser.add_argument("--beam_size", default=5, type=int)
+    parser.add_argument("--fixed_len", action="store_true",
+                        help="force the lower couplet to have the same length as the upper one")
     parser.add_argument("--demo", action="store_true",
                         help="run the built-in examples instead of the interactive shell")
     parser.add_argument("--device", default=None, type=str)
@@ -66,14 +68,14 @@ def main() -> None:
 
     if args.text:
         predictions = predict_texts(model, tokenizer, args.text, device,
-                                    model_name, args.beam_size)
+                                    model_name, args.beam_size, args.fixed_len)
         for upper, lower in zip(args.text, predictions):
             print(f"上联：{upper}\n下联：{lower}\n")
         return
 
     if args.demo:
         predictions = predict_texts(model, tokenizer, DEMOS, device,
-                                    model_name, args.beam_size)
+                                    model_name, args.beam_size, args.fixed_len)
         for upper, lower in zip(DEMOS, predictions):
             print(f"上联：{upper}\n下联：{lower}\n")
         return
@@ -89,9 +91,10 @@ def main() -> None:
         if not upper:
             continue
         lower = predict_texts(model, tokenizer, [upper], device,
-                              model_name, args.beam_size)[0]
+                              model_name, args.beam_size, args.fixed_len)[0]
         print(f"下联：{lower}")
 
 
 if __name__ == "__main__":
     main()
+

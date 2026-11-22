@@ -81,6 +81,11 @@ def build_arrays(in_file: Path, out_file: Path, tokenizer: Tokenizer,
         for j, ch in enumerate(upper):
             token_id = get_id(ch, unk_id)
             inputs[row, j] = token_id
+            total_chars += 1
+            if token_id == unk_id:
+                oov_chars += 1
+        for j, ch in enumerate(lower):
+            token_id = get_id(ch, unk_id)
             targets[row, j + 1] = token_id
             total_chars += 1
             if token_id == unk_id:

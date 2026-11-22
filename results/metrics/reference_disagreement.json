@@ -1,0 +1,10 @@
+{
+  "uppers_with_multiple_human_lowers": 70166,
+  "sampled_pairs": 3000,
+  "bleu4_mean": 0.09204015868129693,
+  "bleu4_median": 0.020255986027125642,
+  "bleu4_p90": 0.28574404296988,
+  "rouge_l_mean": 0.19475785458853556,
+  "char_accuracy_mean": 0.18383644516251363,
+  "exact_match_rate": 0.0
+}

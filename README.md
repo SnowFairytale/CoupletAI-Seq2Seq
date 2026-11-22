@@ -1,4 +1,4 @@
-# 自动对联生成：Seq2Seq（GRU + Attention）
+﻿# 自动对联生成：Seq2Seq（GRU + Attention）
 
 机器学习概论课程项目。给定上联，模型自回归地逐字生成下联。
 
@@ -15,7 +15,7 @@
 | 句子边界 | 无 BOS/EOS | 显式 `[BOS]` / `[EOS]`，teacher forcing 训练 |
 | 数据划分 | 官方 train / test | 从 train 中再划出 20,000 条验证集，test 只用于最终评估 |
 | 评估 | BLEU-4、ROUGE-L | BLEU-1~4、ROUGE-L、完全匹配、长度一致率、字级准确率、distinct-n |
-| 对照实验 | — | 同数据同轮数的序列标注基线；无注意力消融 |
+| 对照实验 | — | 同数据的序列标注基线；无注意力消融 |
 
 ## 2. 项目结构
 
@@ -33,6 +33,11 @@ MySolution/
 ├── evaluate.py           # 在 val/test 上计算指标并保存逐句结果
 ├── predict.py            # 命令行交互式对对联
 ├── plot.py               # 损失曲线 / 指标曲线 / 模型对比图
+├── analyze_data.py       # 数据长度分布统计与作图
+├── analyze_references.py # 估计“参考不唯一”造成的指标上限
+├── compare_metrics.py    # 从指标 JSON 生成对比表
+├── make_examples.py      # 从逐句结果中挑选定性样例
+├── make_architecture_figure.py
 ├── requirements.txt
 ├── report.md             # 实验报告
 └── results/              # 日志、指标、样例、图片
@@ -59,21 +64,21 @@ python preprocess.py --input ../CoupletAI/couplet --output data --val_size 20000
 
 ```bash
 python train.py --model gru_attn --run_name gru_attn \
-    --epochs 8 --batch_size 512 --lr 1e-3 --eval_samples 1000
+    --epochs 7 --batch_size 512 --lr 1e-3 --eval_samples 1000
 ```
 
 序列标注基线（复现样例的 BiLSTM 标注结构，用于对照）：
 
 ```bash
 python train.py --model bilstm_tagger --run_name bilstm_tagger \
-    --epochs 3 --batch_size 512 --embed_dim 256 --hidden_dim 256
+    --epochs 4 --batch_size 512 --embed_dim 256 --hidden_dim 256 --enc_layers 1
 ```
 
 无注意力消融：
 
 ```bash
 python train.py --model gru_noattn --run_name gru_noattn \
-    --epochs 6 --batch_size 512
+    --epochs 2 --batch_size 512
 ```
 
 训练日志写入 `results/logs/`，最优/最后 checkpoint 写入 `results/checkpoints/`（已在 `.gitignore` 中排除）。
@@ -82,15 +87,26 @@ python train.py --model gru_noattn --run_name gru_noattn \
 
 ```bash
 python evaluate.py --checkpoint results/checkpoints/gru_attn_best.pt --split test --name gru_attn
-python predict.py --checkpoint results/checkpoints/gru_attn_best.pt --text "春暮偶登楼，上下鱼龙，应惜满湖绿水" --beam_size 5
-python predict.py --checkpoint results/checkpoints/gru_attn_best.pt --demo
+python predict.py --checkpoint results/checkpoints/gru_attn_best.pt --text "春暮偶登楼，上下鱼龙，应惜满湖绿水" --beam_size 5 --fixed_len
+python predict.py --checkpoint results/checkpoints/gru_attn_best.pt --demo --beam_size 5 --fixed_len
 ```
 
 评估结果保存为 `results/metrics/<name>_<split>.json`，逐句预测保存为 `results/samples/<name>_<split>.csv`。
 
 ## 6. 实验结果
 
-（见 [report.md](report.md)；训练曲线在 `results/figures/`。）
+主模型训练 7 轮（batch 512，约 80 分钟），在 4,000 条测试集上的主要指标：
+
+| 模型 / 解码 | BLEU-1 | BLEU-2 | BLEU-3 | BLEU-4 | ROUGE-L | 长度一致 | 字级准确率 | 测试 PPL |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| BiLSTM 序列标注基线 | 0.1629 | 0.0644 | 0.0379 | 0.0286 | 0.1549 | 1.0000 | 0.1438 | 165.51 |
+| GRU Seq2Seq + 注意力（贪心） | 0.1523 | 0.0703 | 0.0435 | 0.0326 | 0.1459 | 0.9963 | 0.1353 | **36.46** |
+| GRU Seq2Seq + 注意力 + beam=5（1,000 条） | 0.1569 | 0.0764 | 0.0483 | **0.0366** | 0.1505 | 1.0000 | 0.1402 | — |
+| GRU Seq2Seq 无注意力（2 轮，固定长度） | 0.1121 | 0.0419 | 0.0255 | 0.0200 | 0.1053 | 1.0000 | 0.0847 | 79.71 |
+
+去掉注意力后所有指标都显著下降（BLEU-4 0.0325 → 0.0200，困惑度 36.5 → 79.7），说明注意力是模型能工作的关键组件。
+
+一个重要的分析是“参考不唯一”：同一上联的两个不同人工下联之间，BLEU-4 平均只有 **0.092**（中位数 0.020），ROUGE-L 为 0.195。因此本任务中 BLEU-4 的绝对值低，很大程度上是单参考指标造成的；本模型的 0.0326 已高于人类参考对的中位数，ROUGE-L / 字级准确率达到人类参考对的约 74%–75%。详细的损失曲线、注意力消融、生成样例与错误分析见 [report.md](report.md)，图片在 `results/figures/`。
 
 ## 7. 说明
 
